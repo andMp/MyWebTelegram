@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 
 namespace MyWebTelegram
 {
@@ -6,6 +7,8 @@ namespace MyWebTelegram
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddDbContext<TelegramDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Add services to the container.
 
