@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Реєстрація | Telegram Клон</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #e5e5e5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+            .login-box h2 {
+                text-align: center;
+                color: #2aabee;
+            }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #2aabee;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+            cursor: pointer;
+        }
+
+        .link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+            .link a {
+                color: #2aabee;
+                text-decoration: none;
+            }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>Реєстрація</h2>
+        <input type="text" id="phone" placeholder="Телефон">
+        <input type="password" id="password" placeholder="Пароль">
+        <button onclick="register()">Зареєструватись</button>
+        <div class="link">
+            <a href="index.html">Вхід</a>
+        </div>
+    </div>
+
+    <script>
+        async function register() {
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber: phone, password })
+            });
+
+            const data = await res.json();
+            alert(data.message);
+        }
+    </script>
+</body>
+</html>

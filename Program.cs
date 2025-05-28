@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
 
 namespace MyWebTelegram
 {
@@ -26,6 +28,11 @@ namespace MyWebTelegram
                 app.UseSwaggerUI();
             }
 
+            var scope = app.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<TelegramDbContext>();
+            dbContext.Database.Migrate();
+
+            app.UseStaticFiles();
             app.UseAuthorization();
 
 

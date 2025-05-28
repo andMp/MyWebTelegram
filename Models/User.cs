@@ -3,7 +3,7 @@
     public class User
     {
         public int Id { get; set; }
-        public string PhoneNumber { get; set; } = null!; // <- додано
+        public string PhoneNumber { get; set; } = null!;
         public string Username { get; set; } = null!;
         public string DisplayName { get; set; } = null!;
         public string PasswordHash { get; set; } = null!;
