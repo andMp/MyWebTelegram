@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-
 namespace MyWebTelegram
 {
     public class Program
@@ -9,32 +8,36 @@ namespace MyWebTelegram
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Підключення до SQL Server з appsettings.json
             builder.Services.AddDbContext<TelegramDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // Add services to the container.
-
+            // Додати контролери, Swagger тощо
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // Запуск міграцій під час запуску застосунку
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TelegramDbContext>();
+                dbContext.Database.Migrate(); // Автоматично створить або оновить базу
+            }
+
+            // Налаштування пайплайну
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            var scope = app.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<TelegramDbContext>();
-            dbContext.Database.Migrate();
+            app.UseDefaultFiles();
+            app.UseStaticFiles(); // Якщо планується підключення frontend
 
-            app.UseStaticFiles();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

@@ -15,7 +15,6 @@
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
 	  
-	<Compile Include="Migrations\AddPhoneToUser.cs" />
 
   </ItemGroup>
 
