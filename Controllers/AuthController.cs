@@ -12,24 +12,17 @@ public class AuthController : ControllerBase
         _context = context;
     }
 
-    [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginDto login)
-    {
-        var user = _context.Users.FirstOrDefault(u =>
-            u.PhoneNumber == login.PhoneNumber &&
-            u.PasswordHash == login.Password); // у реальному житті — хешування
-
-        if (user == null)
-            return Unauthorized("Невірний номер або пароль");
-
-        return Ok(new { message = "Успішний вхід", userId = user.Id });
-    }
-
     [HttpPost("register")]
     public IActionResult Register([FromBody] RegisterDto register)
     {
+        if (string.IsNullOrWhiteSpace(register.PhoneNumber))
+            return BadRequest(new { message = "Номер телефону обов’язковий" });
+
+        if (string.IsNullOrWhiteSpace(register.Password))
+            return BadRequest(new { message = "Пароль обов’язковий" });
+
         if (_context.Users.Any(u => u.PhoneNumber == register.PhoneNumber))
-            return BadRequest("Такий номер вже зареєстрований");
+            return BadRequest(new { message = "Такий номер вже зареєстрований" });
 
         var user = new User
         {
@@ -44,6 +37,27 @@ public class AuthController : ControllerBase
 
         return Ok(new { message = "Реєстрація успішна" });
     }
+
+
+    [HttpPost("login")]
+    public IActionResult Login([FromBody] LoginDto login)
+    {
+        if (string.IsNullOrWhiteSpace(login.PhoneNumber))
+            return BadRequest(new { message = "Номер телефону обов’язковий" });
+
+        if (string.IsNullOrWhiteSpace(login.Password))
+            return BadRequest(new { message = "Пароль обов’язковий" });
+
+        var user = _context.Users.FirstOrDefault(u =>
+            u.PhoneNumber == login.PhoneNumber &&
+            u.PasswordHash == login.Password);
+
+        if (user == null)
+            return Unauthorized(new { message = "Невірний номер або пароль" });
+
+        return Ok(new { message = "Успішний вхід", userId = user.Id });
+    }
+
 }
 
 public class LoginDto

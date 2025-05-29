@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>Реєстрація | Telegram Клон</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             font-family: sans-serif;
             background-color: #e5e5e5;
@@ -27,22 +30,19 @@
             }
 
         input[type="text"],
-        input[type="password"] {
+        input[type="password"],
+        button {
             width: 100%;
             padding: 10px;
             margin: 0.5rem 0;
             border-radius: 5px;
-            border: 1px solid #ccc;
+            font-size: 1rem;
         }
 
         button {
-            width: 100%;
-            padding: 10px;
             background-color: #2aabee;
             color: white;
             border: none;
-            border-radius: 5px;
-            margin-top: 0.5rem;
             cursor: pointer;
         }
 
@@ -55,10 +55,24 @@
                 color: #2aabee;
                 text-decoration: none;
             }
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+        }
+
     </style>
 </head>
 <body>
     <div class="login-box">
+        <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram" class="logo">
+        </div>
         <h2>Реєстрація</h2>
         <input type="text" id="phone" placeholder="Телефон">
         <input type="password" id="password" placeholder="Пароль">
@@ -73,15 +87,29 @@
             const phone = document.getElementById('phone').value;
             const password = document.getElementById('password').value;
 
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phoneNumber: phone, password })
-            });
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber: phone, password })
+                });
 
-            const data = await res.json();
-            alert(data.message);
+                const text = await res.text();
+                let data;
+
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = { message: text };
+                }
+
+                alert(data.message);
+
+            } catch (err) {
+                alert("Помилка з'єднання з сервером");
+            }
         }
     </script>
+
 </body>
 </html>
