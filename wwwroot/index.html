@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Вхід | Telegram Клон</title>
     <style>
-        /* (стилі залишаються без змін) */
         * {
             box-sizing: border-box;
         }
@@ -108,7 +107,9 @@
                 alert(data.message);
 
                 if (res.ok) {
-                    
+                    // Зберігаємо userId у локальному сховищі
+                    localStorage.setItem("userId", data.userId);
+                    window.location.href = "home.html";
                 }
 
             } catch (err) {

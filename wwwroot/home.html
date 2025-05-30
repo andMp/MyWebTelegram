@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Мій Telegram</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            background-color: #e5e5e5;
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: #fff;
+            border-right: 1px solid #ccc;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+            .sidebar h2 {
+                color: #2aabee;
+                margin-top: 0;
+            }
+
+        .chat-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+            .chat-item:hover {
+                background-color: #f1f1f1;
+            }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #f7f7f7;
+        }
+
+        .header {
+            padding: 1rem;
+            background-color: #2aabee;
+            color: white;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logout-button {
+            background-color: transparent;
+            border: 1.5px solid white;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+            .logout-button:hover {
+                background-color: white;
+                color: #2aabee;
+            }
+
+        .messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: gray;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 1rem;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+        }
+
+            .input-area input {
+                flex: 1;
+                padding: 10px;
+                border-radius: 5px;
+                border: 1px solid #ccc;
+                margin-right: 10px;
+            }
+
+            .input-area button {
+                background-color: #2aabee;
+                border: none;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Чати</h2>
+        <button onclick="addUser()" style="width: 100%; padding: 10px; margin-bottom: 1rem; background-color: #2aabee; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            ➕ Додати користувача
+        </button>
+        <div id="chats"></div>
+    </div>
+
+    <div class="main">
+        <div class="header">
+            Мій Telegram
+            <button class="logout-button" onclick="logout()">Вихід</button>
+        </div>
+        <div class="messages" id="messages">
+            Виберіть чат, щоб почати спілкування
+        </div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Введіть повідомлення...">
+            <button onclick="sendMessage()">Надіслати</button>
+        </div>
+    </div>
+
+    <script>
+        const userId = localStorage.getItem("userId");
+
+        if (!userId) {
+            alert("Будь ласка, увійдіть у систему");
+            window.location.href = "index.html"; 
+        } else {
+            loadChats();
+        }
+
+        function logout() {
+            localStorage.removeItem("userId");
+            window.location.href = "index.html";
+        }
+
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (message === '') return;
+
+            if (!window.currentChatId) {
+                alert("Оберіть чат!");
+                return;
+            }
+
+            fetch(`/api/users/${window.currentChatId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senderId: userId, text: message })
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error("Помилка при відправленні повідомлення");
+                    return res.json();
+                })
+                .then(savedMsg => {
+                    const messagesDiv = document.getElementById('messages');
+                    if (messagesDiv.textContent.includes("Виберіть чат")) {
+                        messagesDiv.innerHTML = '';
+                        messagesDiv.style.justifyContent = 'flex-start';
+                        messagesDiv.style.alignItems = 'flex-start';
+                        messagesDiv.style.color = 'black';
+                        messagesDiv.style.textAlign = 'left';
+                    }
+
+                    const newMsg = document.createElement('div');
+                    newMsg.textContent = `${savedMsg.senderName}: ${savedMsg.text}`;
+                    messagesDiv.appendChild(newMsg);
+                    input.value = '';
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight; // Прокрутка вниз
+                })
+                .catch(err => alert(err.message));
+        }
+
+
+        function addUser() {
+            const phone = prompt("Введіть номер телефону користувача:");
+            if (!phone) return;
+
+            fetch(`/api/users/find-or-create-chat?phone=${encodeURIComponent(phone)}&currentUserId=${userId}`, {
+                method: 'POST'
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error("Користувача не знайдено або сталася помилка.");
+                    return res.json();
+                })
+                .then(chat => {
+                    appendChatToSidebar(chat);
+                })
+                .catch(err => {
+                    alert(err.message);
+                });
+        }
+
+        function appendChatToSidebar(chat) {
+            const chatsDiv = document.getElementById('chats');
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+
+            const chatName = chat.isGroup
+                ? (chat.chatName ?? "Груповий чат")
+                : "Чат з " + (chat.displayName || "Невідомо");
+
+            chatItem.textContent = chatName;
+            chatItem.onclick = () => openChatWith(chat.chatId, chat.displayName);
+            chatsDiv.appendChild(chatItem);
+        }
+
+        function loadChats() {
+            fetch(`/api/users/user-chats/${userId}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Не вдалося завантажити чати.");
+                    return res.json();
+                })
+                .then(chats => {
+                    const chatsDiv = document.getElementById('chats');
+                    chatsDiv.innerHTML = '';
+                    chats.forEach(chat => appendChatToSidebar(chat));
+                })
+                .catch(err => {
+                    console.error("Помилка при завантаженні чатів:", err.message);
+                    const msg = err.message.includes("Не вдалося завантажити чати")
+                        ? err.message
+                        : "Не вдалося завантажити чати: " + err.message;
+                    alert(msg);
+                });
+        }
+
+        function openChatWith(chatId, username) {
+            window.currentChatId = chatId;  // Зберігаємо активний чат
+
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            messagesDiv.style.justifyContent = 'flex-start';
+            messagesDiv.style.alignItems = 'flex-start';
+            messagesDiv.style.color = 'black';
+            messagesDiv.style.textAlign = 'left';
+
+            fetch(`/api/users/${chatId}/messages`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Помилка при завантаженні повідомлень.");
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.length === 0) {
+                        messagesDiv.innerHTML = `<div>Чат з <b>${username}</b> ще порожній.</div>`;
+                    } else {
+                        data.forEach(msg => {
+                            const msgDiv = document.createElement('div');
+                            msgDiv.textContent = `${msg.senderName}: ${msg.text}`;
+                            messagesDiv.appendChild(msgDiv);
+                        });
+                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    }
+                })
+                .catch(() => {
+                    messagesDiv.innerHTML = `<div>Не вдалося завантажити повідомлення для чату з <b>${username}</b>.</div>`;
+                });
+        }
+
+    </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MyWebTelegram.Models;
 
 [Route("api/[controller]")]
@@ -39,24 +40,99 @@ public class AuthController : ControllerBase
     }
 
 
+
+
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginDto login)
+    public async Task<IActionResult> Login([FromBody] LoginDto login)
     {
-        if (string.IsNullOrWhiteSpace(login.PhoneNumber))
-            return BadRequest(new { message = "Номер телефону обов’язковий" });
+        try
+        {
+            if (string.IsNullOrWhiteSpace(login.PhoneNumber))
+                return BadRequest(new { message = "Номер телефону обов’язковий" });
 
-        if (string.IsNullOrWhiteSpace(login.Password))
-            return BadRequest(new { message = "Пароль обов’язковий" });
+            if (string.IsNullOrWhiteSpace(login.Password))
+                return BadRequest(new { message = "Пароль обов’язковий" });
 
-        var user = _context.Users.FirstOrDefault(u =>
-            u.PhoneNumber == login.PhoneNumber &&
-            u.PasswordHash == login.Password);
+            var user = _context.Users.FirstOrDefault(u =>
+                u.PhoneNumber == login.PhoneNumber &&
+                u.PasswordHash == login.Password);
 
-        if (user == null)
-            return Unauthorized(new { message = "Невірний номер або пароль" });
+            if (user == null)
+                return Unauthorized(new { message = "Невірний номер або пароль" });
 
-        return Ok(new { message = "Успішний вхід", userId = user.Id });
+            // Завантажити чати користувача з усіма необхідними включеннями
+            var chats = await _context.Chats
+    .Where(c => c.ChatUsers.Any(cu => cu.UserId == user.Id)) // користувач у чаті
+    .Where(c => c.Messages.Any()) // тільки з повідомленнями
+    .Include(c => c.ChatUsers)
+        .ThenInclude(cu => cu.User)
+    .Include(c => c.Messages)
+    .ThenInclude(m => m.Sender)
+    .ToListAsync();
+
+
+            var chatDtos = chats.Select(chat => new
+            {
+                chatId = chat.Id,
+                isGroup = chat.IsGroup,
+                chatName = chat.ChatName,
+                participants = chat.ChatUsers.Select(cu => new
+                {
+                    cu.User.Id,
+                    cu.User.DisplayName,
+                    cu.User.Username,
+                    cu.User.PhoneNumber
+                }),
+                messages = chat.Messages
+            .OrderByDescending(m => m.SentAt)
+            .Take(10)
+            .OrderBy(m => m.SentAt)
+            .Select(m => new
+            {
+                m.Id,
+                m.Text,
+                m.SentAt,
+                senderId = m.SenderId,
+                senderName = m.Sender.DisplayName
+            })
+            });
+
+            return Ok(new
+            {
+                message = "Успішний вхід",
+                userId = user.Id,
+                displayName = user.DisplayName,
+                username = user.Username,
+                chats = chatDtos
+            });
+
+            //return Ok(new
+            //{
+            //    message = "Успішний вхід",
+            //    userId = user.Id,
+            //    displayName = user.DisplayName,
+            //    username = user.Username,
+            //    chats = chatDtos
+            //});
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                message = "Внутрішня помилка сервера",
+                error = ex.Message,
+                stackTrace = ex.StackTrace
+            }));
+
+            return StatusCode(500, new
+            {
+                message = "Внутрішня помилка сервера",
+                error = ex.Message,
+                stackTrace = ex.StackTrace
+            });
+        }
     }
+
 
 }
 
