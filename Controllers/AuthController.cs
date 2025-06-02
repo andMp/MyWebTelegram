@@ -40,8 +40,6 @@ public class AuthController : ControllerBase
     }
 
 
-
-
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto login)
     {
@@ -65,7 +63,7 @@ public class AuthController : ControllerBase
     .Where(c => c.ChatUsers.Any(cu => cu.UserId == user.Id)) // користувач у чаті
     .Where(c => c.Messages.Any()) // тільки з повідомленнями
     .Include(c => c.ChatUsers)
-        .ThenInclude(cu => cu.User)
+    .ThenInclude(cu => cu.User)
     .Include(c => c.Messages)
     .ThenInclude(m => m.Sender)
     .ToListAsync();

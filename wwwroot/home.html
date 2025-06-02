@@ -77,11 +77,10 @@
             padding: 1rem;
             overflow-y: auto;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
             color: gray;
             font-size: 1.1rem;
-            text-align: center;
+            position: relative;
         }
 
         .input-area {
@@ -107,6 +106,49 @@
                 border-radius: 5px;
                 cursor: pointer;
             }
+
+        .placeholder {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: gray;
+            font-size: 1.2rem;
+            user-select: none;
+        }
+        .message {
+            margin: 0.3rem 0;
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            position: relative;
+            font-size: 1rem;
+            line-height: 1.3;
+        }
+
+        .sent {
+            background-color: #2aabee;
+            color: white;
+            align-self: flex-end; /* вирівняти праворуч */
+            border-bottom-right-radius: 0;
+        }
+
+        .received {
+            background-color: #e1e1e1;
+            color: black;
+            align-self: flex-start; /* вирівняти ліворуч */
+            border-bottom-left-radius: 0;
+        }
+
+        .timestamp {
+            display: block;
+            font-size: 0.75rem;
+            color: #555;
+            margin-top: 0.2rem;
+            text-align: right;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -124,7 +166,8 @@
             <button class="logout-button" onclick="logout()">Вихід</button>
         </div>
         <div class="messages" id="messages">
-            Виберіть чат, щоб почати спілкування
+            <div class="placeholder" id="placeholder">Виберіть чат, щоб почати спілкування</div>
+            <div id="messagesList" style="flex:1; display:flex; flex-direction: column; overflow-y: auto; color: gray; font-size: 1.1rem;"></div>
         </div>
         <div class="input-area">
             <input type="text" id="messageInput" placeholder="Введіть повідомлення...">
@@ -137,16 +180,46 @@
 
         if (!userId) {
             alert("Будь ласка, увійдіть у систему");
-            window.location.href = "index.html"; 
+            window.location.href = "index.html";
         } else {
             loadChats();
         }
 
         function logout() {
             localStorage.removeItem("userId");
+            localStorage.removeItem("currentChatId");
             window.location.href = "index.html";
         }
 
+        function formatTime(dateStr) {
+            const date = new Date(dateStr);
+            const h = String(date.getHours()).padStart(2, '0');
+            const m = String(date.getMinutes()).padStart(2, '0');
+            const s = String(date.getSeconds()).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function createMessageElement(msg) {
+            const div = document.createElement('div');
+            div.classList.add('message');
+
+            const senderId = msg.senderId ?? msg.SenderId ?? null;
+            console.log('Message sender:', senderId, 'Current user:', userId);
+            if (senderId?.toString() === userId.toString()) {
+                div.classList.add('sent');
+            } else {
+                div.classList.add('received');
+            }
+
+            div.textContent = msg.text;
+
+            const timeSpan = document.createElement('span');
+            timeSpan.classList.add('timestamp');
+            timeSpan.textContent = formatTime(msg.sentAt || new Date());
+            div.appendChild(timeSpan);
+
+            return div;
+        }
 
         function sendMessage() {
             const input = document.getElementById('messageInput');
@@ -168,24 +241,25 @@
                     return res.json();
                 })
                 .then(savedMsg => {
-                    const messagesDiv = document.getElementById('messages');
-                    if (messagesDiv.textContent.includes("Виберіть чат")) {
-                        messagesDiv.innerHTML = '';
-                        messagesDiv.style.justifyContent = 'flex-start';
-                        messagesDiv.style.alignItems = 'flex-start';
-                        messagesDiv.style.color = 'black';
-                        messagesDiv.style.textAlign = 'left';
-                    }
+                    const placeholder = document.getElementById('placeholder');
+                    const messagesList = document.getElementById('messagesList');
 
-                    const newMsg = document.createElement('div');
-                    newMsg.textContent = `${savedMsg.senderName}: ${savedMsg.text}`;
-                    messagesDiv.appendChild(newMsg);
+                    // Приховуємо placeholder, якщо він показаний
+                    placeholder.style.display = 'none';
+
+                    // Змінюємо колір тексту на чорний, якщо був сірий (для messagesList)
+                    messagesList.style.color = 'black';
+
+                    // Додаємо нове повідомлення
+                    savedMsg.senderId = userId;
+                    const newMsg = createMessageElement(savedMsg);
+                    messagesList.appendChild(newMsg);
+
                     input.value = '';
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight; // Прокрутка вниз
+                    messagesList.scrollTop = messagesList.scrollHeight; // Прокрутка вниз
                 })
                 .catch(err => alert(err.message));
         }
-
 
         function addUser() {
             const phone = prompt("Введіть номер телефону користувача:");
@@ -238,17 +312,25 @@
                         : "Не вдалося завантажити чати: " + err.message;
                     alert(msg);
                 });
+            const savedChatId = localStorage.getItem('currentChatId');
+            if (savedChatId) {
+                // Затримка, щоб чати встигли відрендеритися
+                setTimeout(() => {
+                    openChatWith(savedChatId);
+                }, 500);
+            }
         }
 
         function openChatWith(chatId, username) {
-            window.currentChatId = chatId;  // Зберігаємо активний чат
+            window.currentChatId = chatId;
+            localStorage.setItem('currentChatId', chatId); // ЗБЕРЕГТИ chatId
 
-            const messagesDiv = document.getElementById('messages');
-            messagesDiv.innerHTML = '';
-            messagesDiv.style.justifyContent = 'flex-start';
-            messagesDiv.style.alignItems = 'flex-start';
-            messagesDiv.style.color = 'black';
-            messagesDiv.style.textAlign = 'left';
+            const placeholder = document.getElementById('placeholder');
+            const messagesList = document.getElementById('messagesList');
+
+            placeholder.style.display = 'none';
+            messagesList.innerHTML = '';
+            messagesList.style.color = 'black';
 
             fetch(`/api/users/${chatId}/messages`)
                 .then(res => {
@@ -257,19 +339,36 @@
                 })
                 .then(data => {
                     if (data.length === 0) {
-                        messagesDiv.innerHTML = `<div>Чат з <b>${username}</b> ще порожній.</div>`;
-                    } else {
-                        data.forEach(msg => {
-                            const msgDiv = document.createElement('div');
-                            msgDiv.textContent = `${msg.senderName}: ${msg.text}`;
-                            messagesDiv.appendChild(msgDiv);
-                        });
-                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                        messagesList.innerHTML = '<div class="placeholder">Повідомлень немає</div>';
+                        return;
                     }
+                    data.forEach(msg => {
+                        const messageEl = createMessageElement(msg);
+                        messagesList.appendChild(messageEl);
+                    });
+                    messagesList.scrollTop = messagesList.scrollHeight;
                 })
-                .catch(() => {
-                    messagesDiv.innerHTML = `<div>Не вдалося завантажити повідомлення для чату з <b>${username}</b>.</div>`;
-                });
+                .catch(err => alert(err.message));
+        }
+
+        function resetMessagesArea() {
+            window.currentChatId = null;
+            const placeholder = document.getElementById('placeholder');
+            const messagesList = document.getElementById('messagesList');
+            messagesList.innerHTML = '';
+            placeholder.style.display = 'flex';
+        }
+        function renderMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+
+            if (message.senderId === userId) {
+                messageDiv.classList.add('right');
+            } else {
+                messageDiv.classList.add('left');
+            }
+            messageDiv.textContent = message.text;
+            document.getElementById('chat-box').appendChild(messageDiv);
         }
 
     </script>

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using MyWebTelegram.Models;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -83,15 +84,42 @@ namespace MyWebTelegram.Controllers
             return Ok(chats);
         }
 
-        [HttpGet("chat-messages/{chatId}")]
-        public async Task<IActionResult> GetChatMessages(int chatId)
+        //[HttpGet("chat-messages/{chatId}")]
+        //public async Task<IActionResult> GetChatMessages(int chatId)
+        //{
+        //    var messages = await _context.Messages
+        //        .Include(m => m.Sender)
+        //        .Where(m => m.ChatId == chatId)
+        //        .OrderBy(m => m.SentAt)
+        //        .Select(m => new
+        //        {
+        //            messageId = m.Id,
+        //            chatId = m.ChatId,
+        //            senderId = m.SenderId,
+        //            senderDisplayName = m.Sender.DisplayName,
+        //            text = m.Text,
+        //            attachmentUrl = m.AttachmentUrl,
+        //            sentAt = m.SentAt
+        //        })
+        //        .ToListAsync();
+
+        //    if (messages == null || messages.Count == 0)
+        //        return NotFound("Повідомлень не знайдено");
+        //    return Ok(messages);
+        //}
+        [HttpGet("{chatId}/messages")]
+        public async Task<IActionResult> GetMessages(int chatId)
         {
             var messages = await _context.Messages
-                .Include(m => m.Sender)
                 .Where(m => m.ChatId == chatId)
+                .Include(m => m.Sender)
                 .OrderBy(m => m.SentAt)
                 .Select(m => new
                 {
+                    //m.Id,
+                    //m.Text,
+                    //m.SentAt,
+                    //senderName = m.Sender.DisplayName
                     messageId = m.Id,
                     chatId = m.ChatId,
                     senderId = m.SenderId,
@@ -104,24 +132,6 @@ namespace MyWebTelegram.Controllers
 
             if (messages == null || messages.Count == 0)
                 return NotFound("Повідомлень не знайдено");
-            return Ok(messages);
-        }
-        [HttpGet("{chatId}/messages")]
-        public async Task<IActionResult> GetMessages(int chatId)
-        {
-            var messages = await _context.Messages
-                .Where(m => m.ChatId == chatId)
-                .Include(m => m.Sender)
-                .OrderBy(m => m.SentAt)
-                .Select(m => new
-                {
-                    m.Id,
-                    m.Text,
-                    m.SentAt,
-                    senderName = m.Sender.DisplayName
-                })
-                .ToListAsync();
-
             return Ok(messages);
         }
 
@@ -152,9 +162,14 @@ namespace MyWebTelegram.Controllers
         }
     }
 
-    public class SendMessageDto
+public class SendMessageDto
     {
+        [Required]
         public int SenderId { get; set; }
+
+        [Required]
+        [MaxLength(1000)]
         public string Text { get; set; } = string.Empty;
     }
+
 }
