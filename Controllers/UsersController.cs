@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.CognitiveServices.Speech;
+using static MyWebTelegram.Program;
+using Microsoft.Extensions.Options;
 
 namespace MyWebTelegram.Controllers
 {
@@ -13,10 +16,12 @@ namespace MyWebTelegram.Controllers
     public class UsersController : ControllerBase
     {
         private readonly TelegramDbContext _context;
+        private readonly AzureSpeechOptions _speechOptions;
 
-        public UsersController(TelegramDbContext context)
+        public UsersController(TelegramDbContext context, IOptions<AzureSpeechOptions> speechOptions)
         {
             _context = context;
+            _speechOptions = speechOptions.Value;
         }
 
         [HttpPost("find-or-create-chat")]
@@ -160,9 +165,36 @@ namespace MyWebTelegram.Controllers
                 senderName = (await _context.Users.FindAsync(dto.SenderId))?.DisplayName ?? "Unknown"
             });
         }
+        [HttpPost("speak")]
+        public async Task<IActionResult> Speak([FromBody] SpeakDto dto)
+        {
+            var config = SpeechConfig.FromSubscription(_speechOptions.Key, _speechOptions.Region);
+            config.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3);
+
+            using var synthesizer = new SpeechSynthesizer(config, null);
+            using var result = await synthesizer.SpeakTextAsync(dto.Text);
+
+            if (result.Reason == ResultReason.SynthesizingAudioCompleted)
+            {
+                var audioData = result.AudioData;
+                return File(audioData, "audio/mpeg");
+            }
+            else if (result.Reason == ResultReason.Canceled)
+            {
+                var cancellation = SpeechSynthesisCancellationDetails.FromResult(result);
+                return BadRequest(new { error = cancellation.Reason.ToString(), details = cancellation.ErrorDetails });
+            }
+            return StatusCode(500, "Unknown error during speech synthesis.");
+        }
+
+        public class SpeakDto
+        {
+            public string Text { get; set; } = "";
+        }
+
     }
 
-public class SendMessageDto
+    public class SendMessageDto
     {
         [Required]
         public int SenderId { get; set; }

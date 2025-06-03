@@ -44,6 +44,7 @@
             display: flex;
             flex-direction: column;
             background-color: #f7f7f7;
+            min-width: 0;
         }
 
         .header {
@@ -122,6 +123,8 @@
             border-radius: 10px;
             max-width: 75%;
             word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
             position: relative;
             font-size: 1rem;
             line-height: 1.3;
@@ -149,6 +152,10 @@
             text-align: right;
             user-select: none;
         }
+        #contextMenu div:hover {
+            background-color: #f0f0f0;
+        }
+
     </style>
 </head>
 <body>
@@ -174,6 +181,12 @@
             <button onclick="sendMessage()">Надіслати</button>
         </div>
     </div>
+    <div id="contextMenu" style="display:none; position:absolute; z-index:1000; background:#fff; border:1px solid #ccc; border-radius:6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); padding: 6px 0; font-size: 0.95rem;">
+        <div id="speakOption" style="padding: 8px 16px; cursor: pointer; display: flex; align-items: center;">
+            🔊 <span style="margin-left: 8px;">Озвучити</span>
+        </div>
+    </div>
+
 
     <script>
         const userId = localStorage.getItem("userId");
@@ -244,19 +257,17 @@
                     const placeholder = document.getElementById('placeholder');
                     const messagesList = document.getElementById('messagesList');
 
-                    // Приховуємо placeholder, якщо він показаний
                     placeholder.style.display = 'none';
 
-                    // Змінюємо колір тексту на чорний, якщо був сірий (для messagesList)
                     messagesList.style.color = 'black';
 
-                    // Додаємо нове повідомлення
                     savedMsg.senderId = userId;
                     const newMsg = createMessageElement(savedMsg);
                     messagesList.appendChild(newMsg);
+                    addContextMenuToMessage(newMsg);
 
                     input.value = '';
-                    messagesList.scrollTop = messagesList.scrollHeight; // Прокрутка вниз
+                    messagesList.scrollTop = messagesList.scrollHeight;
                 })
                 .catch(err => alert(err.message));
         }
@@ -323,7 +334,7 @@
 
         function openChatWith(chatId, username) {
             window.currentChatId = chatId;
-            localStorage.setItem('currentChatId', chatId); // ЗБЕРЕГТИ chatId
+            localStorage.setItem('currentChatId', chatId);
 
             const placeholder = document.getElementById('placeholder');
             const messagesList = document.getElementById('messagesList');
@@ -345,6 +356,8 @@
                     data.forEach(msg => {
                         const messageEl = createMessageElement(msg);
                         messagesList.appendChild(messageEl);
+
+                        addContextMenuToMessage(messageEl);
                     });
                     messagesList.scrollTop = messagesList.scrollHeight;
                 })
@@ -358,18 +371,65 @@
             messagesList.innerHTML = '';
             placeholder.style.display = 'flex';
         }
-        function renderMessage(message) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
 
-            if (message.senderId === userId) {
-                messageDiv.classList.add('right');
-            } else {
-                messageDiv.classList.add('left');
+        let currentContextMessage = null;
+
+        document.getElementById('speakOption').addEventListener('click', async function () {
+            if (currentContextMessage) {
+                const text = currentContextMessage.childNodes[0]?.textContent || '';
+                if (!text.trim()) return;
+
+                try {
+                    const response = await fetch('/api/users/speak', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ text: text })
+                    });
+
+                    if (!response.ok) {
+                        console.error("Failed to synthesize:", await response.text());
+                        return;
+                    }
+
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+
+                } catch (error) {
+                    console.error("Error during fetch:", error);
+                }
             }
-            messageDiv.textContent = message.text;
-            document.getElementById('chat-box').appendChild(messageDiv);
+            document.getElementById('contextMenu').style.display = 'none';
+        });
+        function addContextMenuToMessage(messageElement) {
+            messageElement.addEventListener('contextmenu', (event) => {
+                event.preventDefault();  // Відмінити стандартне меню
+
+                currentContextMessage = messageElement;
+
+                const contextMenu = document.getElementById('contextMenu');
+                contextMenu.style.display = 'block';
+
+                let posX = event.pageX;
+                let posY = event.pageY;
+
+                if (posX + contextMenu.offsetWidth > window.innerWidth) {
+                    posX = window.innerWidth - contextMenu.offsetWidth - 10;
+                }
+                if (posY + contextMenu.offsetHeight > window.innerHeight) {
+                    posY = window.innerHeight - contextMenu.offsetHeight - 10;
+                }
+
+                contextMenu.style.left = posX + 'px';
+                contextMenu.style.top = posY + 'px';
+            });
         }
+        document.addEventListener('click', () => {
+            document.getElementById('contextMenu').style.display = 'none';
+        });
 
     </script>
 </body>

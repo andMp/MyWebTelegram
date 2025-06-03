@@ -12,6 +12,7 @@ namespace MyWebTelegram
             // Підключення до SQL Server з appsettings.json
             builder.Services.AddDbContext<TelegramDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.Configure<AzureSpeechOptions>(builder.Configuration.GetSection("AzureSpeech"));
 
             // Додати контролери, Swagger тощо
             builder.Services.AddControllers();
@@ -42,6 +43,11 @@ namespace MyWebTelegram
             app.MapControllers();
 
             app.Run();
+        }
+        public class AzureSpeechOptions
+        {
+            public string? Key { get; set; }
+            public string? Region { get; set; }
         }
     }
 }
